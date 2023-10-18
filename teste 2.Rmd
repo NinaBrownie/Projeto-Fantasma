@@ -1,0 +1,152 @@
+---
+title: "PS ESTAT"
+author: "Marina Bráulio (231027319)"
+date: "2023-10-05"
+output: html_document
+---
+
+Carregando os Pacotes
+```{r}
+library(tidyverse)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(plotly)
+```
+
+Carregando os Bancos de Dados
+```{r}
+vendas = read.csv("vendas.csv")
+devolucao1 = read.csv("devolução.csv")
+```
+
+Tema ESTAT
+```{r}
+cores_estat <- c("#A11D21", "#003366", "#CC9900", "#663333", "#FF6600", "#CC9966", "#999966", "#006606", "#008091", "#041835", "#666666")
+theme_estat <- function(...) {
+    theme <- ggplot2::theme_bw() +
+        ggplot2::theme(
+            axis.title.y = ggplot2::element_text(colour = "black", size = 12),
+            axis.title.x = ggplot2::element_text(colour = "black", size = 12),
+            axis.text = ggplot2::element_text(colour = "black", size = 9.5),
+            panel.border = ggplot2::element_blank(),
+            axis.line = ggplot2::element_line(colour = "black"),
+            legend.position = "top",
+            ...
+        )
+
+    return(
+        list(
+            theme,
+            scale_fill_manual(values = cores_estat),
+            scale_colour_manual(values = cores_estat)
+        )
+    )
+}
+```
+
+
+Tratando os Dados - Vendas
+```{r}
+str(vendas)
+
+vendas = vendas %>% 
+  select(!c( X, ...1.x, ...1.y))
+
+colnames(vendas)[colnames(vendas) == "Data.Venda"] <- "Data_da_Venda"
+colnames(vendas)[colnames(vendas) == "User.ID"] <- "ID_do_Usuário"
+colnames(vendas)[colnames(vendas) == "Product.ID"] <- "ID_do_Produto"
+colnames(vendas)[colnames(vendas) == "Product.Name"] <- "Nome_do_Produto"
+colnames(vendas)[colnames(vendas) == "Brand"] <- "Marca"
+colnames(vendas)[colnames(vendas) == "Category"] <- "Categoria"
+colnames(vendas)[colnames(vendas) == "Price"] <- "Preço"
+colnames(vendas)[colnames(vendas) == "Rating"] <- "Avaliação"
+colnames(vendas)[colnames(vendas) == "Color"] <- "Cor"
+colnames(vendas)[colnames(vendas) == "Size"] <- "Tamanho"
+colnames(vendas)[colnames(vendas) == "Unique.ID"] <- "ID_Único"
+colnames(vendas)[colnames(vendas) == "Motivo.devolução"] <- "Motivo_da_devolução"
+
+vendas$Nome_do_Produto <- as.factor(vendas$Nome_do_Produto) 
+levels(vendas$Nome_do_Produto) <- c("Vestido", "Jeans", "Sapatos", "Casacos", "Blusas")
+levels(vendas$Nome_do_Produto)
+vendas$Nome_do_Produto <- as.character(vendas$Nome_do_Produto)
+
+vendas$Categoria <- as.factor(vendas$Categoria) 
+levels(vendas$Categoria) <- c("Moda Infantil", "Moda Masculina", "Moda Feminina")
+levels(vendas$Categoria)
+vendas$Categoria <- as.character(vendas$Categoria)
+
+vendas$Cor <- as.factor(vendas$Cor) 
+levels(vendas$Cor) <- c("Preta", "Azul", "Verde", "Vermelha", "Branca", "Amarela")
+levels(vendas$Cor)
+vendas$Cor <- as.character(vendas$Cor)
+
+vendas$Tamanho <- as.factor(vendas$Tamanho) 
+levels(vendas$Tamanho) <- c("Grande", "Médio", "Pequeno", "Extra Grande")
+levels(vendas$Tamanho)
+vendas$Tamanho <- as.character(vendas$Tamanho)
+```
+
+Tratando os Dados - Vendas
+```{r}
+str(devolucao1)
+devolucao = devolucao1 %>% 
+  select(!c( X, ...1))
+colnames(devolucao)[colnames(devolucao) == "Unique.ID"] <- "ID_Único"
+colnames(devolucao)[colnames(devolucao) == "Motivo.devolução"] <- "Motivo_da_devolução"
+```
+
+
+Comparando e Analisando os bancos:
+```{r}
+sum(!is.na(vendas$Motivo_da_devolução))
+sum(!is.na(devolucao$Motivo_da_devolução))
+#Nota-se que os dois possuem quantidades diferentes
+sum(duplicated(vendas))
+#Essa função mostra que algumas linhas estão repetidas e por isso temos que tratá-las
+dados = distinct(vendas)
+#Para conferir se não existem mais linhas repetidas
+sum(duplicated(dados))
+#Usaremos a partir daqui, o banco "dados"
+```
+
+1 - Faturamento anual por categoria 
+```{r}
+linhas = dados %>% 
+  filter(!is.na(Preço)) %>%
+  filter(!is.na(Categoria)) %>%
+  group_by(Mês, Categoria) %>% 
+  summarise(Faturamento = sum(Preço)) %>% 
+  filter(!is.na(Mês))
+
+ggplot(linhas) +
+  aes(x = Mês, y = Faturamento, group = Categoria, colour = Categoria) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  scale_colour_manual(name = "Categoria", labels = c("A", "B", "C")) +
+  labs(x = "Mês", y = "Faturamento")+
+  theme_estat() 
+ggsave("linhas_bivariado.pdf", width = 158, height = 93, units = "mm")
+```
+
+
+
+
+
+
+ESSE NÂO É DA ANALISE 1
+```{r}
+dados1 = dados %>% 
+    filter(!is.na(Categoria))
+  
+ggplot(dados1) +
+  aes(x = Categoria, y = Preço) +
+  geom_boxplot(fill = c("#A11D21"), width = 0.5) +
+  stat_summary(
+    fun = "mean", geom = "point", shape = 23, size = 3, fill = "white"
+  ) +
+  labs(x = "Categorias", y = "Preço por peça (em Reais)") +
+  theme_estat()
+ggsave("boxplot.pdf", width = 158, height = 93, units = "mm")
+```
+
