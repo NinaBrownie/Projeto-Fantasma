@@ -139,45 +139,6 @@ ggsave("linhas_bivariado.pdf", width = 158, height = 93, units = "mm")
 
 
 1 - Variação do preço por marca 
-```{r}
-dados1 = dados %>% 
-    filter(!is.na(Categoria)) %>% 
-    filter(!is.na(Marca)) %>% 
-    filter(!is.na(Nome_do_Produto))
-  
-ggplot(dados1) +
-  aes(x = Nome_do_Produto, y = Preço) +
-  geom_boxplot(fill = c("#A11D21"), width = 0.5) +
-  facet_wrap(~ Marca) +
-  stat_summary(
-    fun = "mean", geom = "point", shape = 23, size = 3, fill = "white"
-  ) +
-  labs(x = "Tipos de produtos", y = "Preço (em Reais)") +
-  theme_estat() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-ggsave("boxplot.pdf", width = 158, height = 93, units = "mm")
-```
-
-```{r}
-dados1 = dados %>% 
-    filter(!is.na(Categoria)) %>% 
-    filter(!is.na(Marca)) %>% 
-    filter(!is.na(Nome_do_Produto))
-  
-ggplot(dados1) +
-  aes(x = Marca, y = Preço) +
-  geom_boxplot(fill = c("#A11D21"), width = 0.5) +
-  facet_wrap(~ Nome_do_Produto) +
-  stat_summary(
-    fun = "mean", geom = "point", shape = 23, size = 3, fill = "white"
-  ) +
-  labs(x = "Marca", y = "Preço (em Reais)") +
-  theme_estat() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-ggsave("boxplot.pdf", width = 158, height = 93, units = "mm")
-```
 
 ```{r}
 dados1 = dados %>% 
@@ -192,68 +153,79 @@ ggplot(dados1) +
     fun = "mean", geom = "point", shape = 23, size = 3, fill = "white"
   ) +
   labs(x = "Marca", y = "Preço (em Reais)") +
-  theme_estat() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme_estat()
 
-ggsave("boxplot.pdf", width = 158, height = 93, units = "mm")
+ggsave("boxplot_analise2.pdf", width = 158, height = 93, units = "mm")
 ```
+
+
 Cálculo de medidas resumo para cada marca - 
+Adidas
 ```{r}
-# Adida
 adidas = dados1 %>% 
-  filter(Marca == "Adidas")
+  filter(Marca == "Adidas") %>% 
+  filter(!is.na(adidas$Preço))
+sd(adidas$Preço)
   #Marca num geral
 resumo_adidas_geral = summary(adidas$Preço)
 resumo_adidas_geral
-  #Marca por produto
-resumo_adidas_segmentado <- tapply(adidas$Preço, adidas$Nome_do_Produto, summary)
-resumo_adidas_segmentado
-````
+
+adidas %>% 
+  filter(Preço == 96) %>% 
+  count()
+```
+
+Gucci
 ```{r}
-# Gucci
 gucci = dados1 %>% 
-  filter(Marca == "Gucci")
+  filter(Marca == "Gucci")%>% 
+  filter(!is.na(gucci$Preço))
+sd(gucci$Preço)
   #Marca num geral
 resumo_gucci_geral = summary(gucci$Preço)
 resumo_gucci_geral
-  #Marca por produto
-resumo_gucci_segmentado <- tapply(gucci$Preço, gucci$Nome_do_Produto, summary)
-resumo_gucci_segmentado
-````
+```
 
+H&M
 ```{r}
-# H&M
 hm = dados1 %>% 
-  filter(Marca == "H&M")
+  filter(Marca == "H&M") %>% 
+  filter(!is.na(hm$Preço))
+sd(hm$Preço)
   #Marca num geral
 resumo_HM_geral = summary(hm$Preço)
 resumo_HM_geral
-  #Marca por produto
-resumo_HM_segmentado <- tapply(gucci$Preço, gucci$Nome_do_Produto, summary)
-resumo_HM_segmentado
-````
 
+hm %>% 
+  filter(Preço == 100) %>% 
+  count()
+```
+
+Nike
 ```{r}
-# Nike
 nike = dados1 %>% 
-  filter(Marca == "Nike")
+  filter(Marca == "Nike") %>% 
+  filter(!is.na(nike$Preço))
+sd(nike$Preço)
+
   #Marca num geral
 resumo_nike_geral = summary(nike$Preço)
 resumo_nike_geral
-  #Marca por produto
-resumo_nike_segmentado <- tapply(gucci$Preço, gucci$Nome_do_Produto, summary)
-resumo_nike_segmentado
-````
+```
+
+Zara
 ```{r}
-# Zara
 zara = dados1 %>% 
-  filter(Marca == "Zara")
+  filter(Marca == "Zara")  %>% 
+  filter(!is.na(zara$Preço))
+sd(zara$Preço)
   #Marca num geral
 resumo_zara_geral = summary(zara$Preço)
-resumo_zara_geral
-  #Marca por produto
-resumo_zara_segmentado <- tapply(gucci$Preço, gucci$Nome_do_Produto, summary)
-resumo_zara_segmentado
+resumo_zara_geralS
 
+zara %>% 
+  filter(Preço == 10) %>% 
+  count()
 ```
+
 
