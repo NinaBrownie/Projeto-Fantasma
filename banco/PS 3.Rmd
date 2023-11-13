@@ -1,0 +1,377 @@
+---
+title: "PS ESTAT"
+author: "Marina Bráulio (231027319)"
+date: "2023-11-08"
+output: html_document
+---
+
+---
+title: "PS ESTAT"
+author: "Marina Bráulio (231027319)"
+date: "2023-10-05"
+output: html_document
+---
+
+Carregando os Pacotes
+```{r}
+library(tidyverse)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(plotly)
+library(readr)
+```
+
+Carregando os Bancos de Dados
+```{r}
+vendas = read.csv("vendas.csv")
+#banco atualizado
+devolucao = read.csv("devolução_atualizado.csv")
+```
+
+Tema ESTAT
+```{r}
+cores_estat <- c("#A11D21", "#003366", "#CC9900", "#663333", "#FF6600", "#CC9966", "#999966", "#006606", "#008091", "#041835", "#666666")
+theme_estat <- function(...) {
+    theme <- ggplot2::theme_bw() +
+        ggplot2::theme(
+            axis.title.y = ggplot2::element_text(colour = "black", size = 12),
+            axis.title.x = ggplot2::element_text(colour = "black", size = 12),
+            axis.text = ggplot2::element_text(colour = "black", size = 9.5),
+            panel.border = ggplot2::element_blank(),
+            axis.line = ggplot2::element_line(colour = "black"),
+            legend.position = "top",
+            ...
+        )
+
+    return(
+        list(
+            theme,
+            scale_fill_manual(values = cores_estat),
+            scale_colour_manual(values = cores_estat)
+        )
+    )
+}
+```
+
+Tratando os Dados - Vendas
+```{r}
+str(vendas)
+
+vendas = vendas %>% 
+  select(!c( X, ...1.x, ...1.y))
+
+colnames(vendas)[colnames(vendas) == "Data.Venda"] <- "Data_da_Venda"
+colnames(vendas)[colnames(vendas) == "User.ID"] <- "ID_do_Usuário"
+colnames(vendas)[colnames(vendas) == "Product.ID"] <- "ID_do_Produto"
+colnames(vendas)[colnames(vendas) == "Product.Name"] <- "Nome_do_Produto"
+colnames(vendas)[colnames(vendas) == "Brand"] <- "Marca"
+colnames(vendas)[colnames(vendas) == "Category"] <- "Categoria"
+colnames(vendas)[colnames(vendas) == "Price"] <- "Preço"
+colnames(vendas)[colnames(vendas) == "Rating"] <- "Avaliação"
+colnames(vendas)[colnames(vendas) == "Color"] <- "Cor"
+colnames(vendas)[colnames(vendas) == "Size"] <- "Tamanho"
+colnames(vendas)[colnames(vendas) == "Unique.ID"] <- "ID_Único"
+colnames(vendas)[colnames(vendas) == "Motivo.devolução"] <- "Motivo_da_devolução"
+
+vendas$Nome_do_Produto <- as.factor(vendas$Nome_do_Produto) 
+levels(vendas$Nome_do_Produto) <- c("Vestido", "Jeans", "Sapatos", "Casacos", "Blusas")
+levels(vendas$Nome_do_Produto)
+vendas$Nome_do_Produto <- as.character(vendas$Nome_do_Produto)
+
+vendas$Categoria <- as.factor(vendas$Categoria) 
+levels(vendas$Categoria) <- c("Moda Infantil", "Moda Masculina", "Moda Feminina")
+levels(vendas$Categoria)
+vendas$Categoria <- as.character(vendas$Categoria)
+
+vendas$Cor <- as.factor(vendas$Cor) 
+levels(vendas$Cor) <- c("Preta", "Azul", "Verde", "Vermelha", "Branca", "Amarela")
+levels(vendas$Cor)
+vendas$Cor <- as.character(vendas$Cor)
+
+vendas$Tamanho <- as.factor(vendas$Tamanho) 
+levels(vendas$Tamanho) <- c("Grande", "Médio", "Pequeno", "Extra Grande")
+levels(vendas$Tamanho)
+vendas$Tamanho <- as.character(vendas$Tamanho)
+```
+
+Tratando os Dados - Devolução
+```{r}
+str(devolucao)
+devolucao = devolucao %>% 
+  select(!c( X))
+colnames(devolucao)[colnames(devolucao) == "Unique.ID"] <- "ID_Único"
+colnames(devolucao)[colnames(devolucao) == "Motivo.devolução"] <- "Motivo_da_devolução"
+
+devolucao$Motivo_da_devolução <- as.factor(devolucao$Motivo_da_devolução) 
+levels(devolucao$Motivo_da_devolução) <- c("Arrependimento", "Não informado", "Defeito")
+levels(devolucao$Motivo_da_devolução)
+devolucao$Motivo_da_devolução <- as.character(devolucao$Motivo_da_devolução)
+
+```
+
+Comparando e Analisando os bancos:
+```{r}
+sum(!is.na(vendas$Motivo_da_devolução))
+sum(!is.na(devolucao$Motivo_da_devolução))
+#Nota-se que os dois possuem quantidades diferentes
+sum(duplicated(vendas))
+#Essa função mostra que algumas linhas estão repetidas e por isso temos que tratá-las
+dados = distinct(vendas)
+#Para conferir se não existem mais linhas repetidas
+sum(duplicated(dados))
+#Usaremos a partir daqui, o banco "dados"
+```
+
+Juntando os bancos
+```{r}
+banco_agrupado = left_join(dados, devolucao, by = "ID_Único")
+```
+
+1 - Faturamento anual por categoria 
+```{r}
+dados$Data_da_Venda = mdy(dados$Data_da_Venda)
+dados = dados %>% 
+  mutate(Mês = month(Data_da_Venda))
+linhas = dados %>% 
+  filter(!is.na(Preço)) %>%
+  filter(!is.na(Categoria)) %>%
+  group_by(Mês, Categoria) %>% 
+  summarise(Faturamento = sum(Preço)) %>% 
+  filter(!is.na(Mês))
+
+linhas$Mês= as.factor(linhas$Mês)
+levels(linhas$Mês) = c("Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez")
+levels(linhas$Mês)
+
+ggplot(linhas) +
+  aes(x = Mês, y = Faturamento, group = Categoria, colour = Categoria) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  scale_colour_manual(name = "Categoria", labels = c("A", "B", "C")) +
+  labs(x = "Mês", y = "Faturamento")+
+  theme_estat() 
+ggsave("linhas_bivariado.pdf", width = 158, height = 93, units = "mm")
+```
+
+2 - Variação do preço por marca 
+
+```{r}
+dados1 = dados %>% 
+    filter(!is.na(Categoria)) %>% 
+    filter(!is.na(Marca)) %>% 
+    filter(!is.na(Nome_do_Produto))
+  
+ggplot(dados1) +
+  aes(x = Marca, y = Preço) +
+  geom_boxplot(fill = c("#A11D21"), width = 0.5) +
+  stat_summary(
+    fun = "mean", geom = "point", shape = 23, size = 3, fill = "white"
+  ) +
+  labs(x = "Marca", y = "Preço (em Reais)") +
+  theme_estat()
+
+ggsave("boxplot_analise2.pdf", width = 158, height = 93, units = "mm")
+```
+
+Cálculo de medidas resumo para cada marca - 
+Adidas
+```{r}
+adidas = dados1 %>% 
+  filter(!is.na(dados1$Preço)) %>% 
+  filter(Marca == "Adidas")
+  
+sd(adidas$Preço)
+  #Marca num geral
+resumo_adidas_geral = summary(adidas$Preço)
+resumo_adidas_geral
+
+adidas %>% 
+  filter(Preço == 96) %>% 
+  count()
+```
+
+Gucci
+```{r}
+gucci = dados1 %>% 
+  filter(!is.na(dados1$Preço)) %>% 
+  filter(Marca == "Gucci")
+
+sd(gucci$Preço)
+  #Marca num geral
+resumo_gucci_geral = summary(gucci$Preço)
+resumo_gucci_geral
+```
+
+H&M
+```{r}
+hm = dados1 %>% 
+  filter(!is.na(dados1$Preço)) %>%  
+  filter(Marca == "H&M")
+  
+sd(hm$Preço)
+  #Marca num geral
+resumo_HM_geral = summary(hm$Preço)
+resumo_HM_geral
+
+hm %>% 
+  filter(Preço == 100) %>% 
+  count()
+```
+
+Nike
+```{r}
+nike = dados1 %>% 
+  filter(!is.na(dados1$Preço)) %>% 
+  filter(Marca == "Nike") 
+
+sd(nike$Preço)
+
+  #Marca num geral
+resumo_nike_geral = summary(nike$Preço)
+resumo_nike_geral
+```
+
+Zara
+```{r}
+zara = dados1 %>% 
+  filter(!is.na(dados1$Preço)) %>% 
+  filter(Marca == "Zara")  
+
+sd(zara$Preço)
+  #Marca num geral
+resumo_zara_geral = summary(zara$Preço)
+resumo_zara_geral
+
+zara %>% 
+  filter(Preço == 10) %>% 
+  count()
+```
+
+3 - Relação entre categorias (apenas feminino e masculino) e cor 
+```{r}
+freq_cor = dados %>% 
+  filter(!is.na(Cor)) %>% 
+  filter(!is.na(Categoria)) %>% 
+  filter(Categoria == "Moda Masculina" | Categoria == "Moda Feminina")%>%
+  group_by(Cor, Categoria) %>%
+  summarise(freq = n()) 
+
+freq_cor = freq_cor %>% 
+  mutate(Proporção = prop.table(freq)) %>% 
+  mutate(Porcentagem =  sprintf("%.2f%%", Proporção * 100)) %>% 
+  mutate(Freq_c = as.character(freq)) %>% 
+  mutate(Porcentagem_c =  as.character(Porcentagem))
+  
+label = str_c(freq_cor$Freq_c, " ( ", freq_cor$Porcentagem_c, " )")
+
+grafico_3_estat = ggplot(freq_cor) +
+  aes(x = fct_reorder(Cor, freq, .desc=T), y = freq, label = label, fill = Categoria) +
+  geom_col(position = position_dodge2(preserve = "single", padding = 0))+
+  geom_text(
+    position = position_dodge2(width = .9),
+    vjust = -0.5, hjust = 0.5,
+    size = 1.8) + 
+  labs(x = "Cor", y = "Frequência") +
+  theme_estat() +
+  scale_fill_manual(values = cores_estat) + 
+  scale_y_continuous(limits = c(0, 80)) + 
+  theme(axis.text.x = element_text(size = 8))
+grafico_3_estat
+ggsave("analise3.pdf", width = 158, height = 93, units = "mm")
+```
+
+Valores para a tabela de contingência
+```{r}
+dados$Cor = as.factor(dados$Cor)
+levels(dados$Cor)
+
+cores = dados %>% 
+  filter(!is.na(Cor)) %>% 
+  filter(!is.na(Categoria)) %>% 
+  filter(Categoria == "Moda Masculina" | Categoria == "Moda Feminina")%>%
+  group_by(Categoria, Cor) %>% 
+  count()
+cores
+```
+
+4 - Relação entre preço e avaliação
+```{r}
+dispersão = dados %>% 
+  filter(!is.na(Preço)) %>% 
+  filter(!is.na(Avaliação)) %>% 
+  select(Preço, Avaliação)
+
+ggplot(dispersão) +
+  aes(x = Preço, y = Avaliação) +
+  geom_point(colour = "#A11D21", size = 3) +
+  labs(
+    x = "Preço do produto",
+    y = "Avaliação do cliente") + 
+  theme_estat()
+ggsave("analise4.pdf", width = 158, height = 93, units = "mm")
+
+```
+Cálculo de correlação
+```{r}
+cor(dispersão$Preço, dispersão$Avaliação, method = "pearson")
+```
+
+5 -  Frequência de cada tipo de devolução por marca;
+```{r}
+colnames(banco_agrupado)[colnames(banco_agrupado) == "Motivo_da_devolução.y"] <- "Motivo da devolução"
+contagem <- banco_agrupado %>% 
+  filter(!is.na(`Motivo da devolução`)) %>% 
+  filter(!is.na(Marca)) %>% 
+  group_by( Marca, `Motivo da devolução`) %>%
+  summarise(Freq = n()) %>%
+  mutate(Prop = round(100*(Freq/sum(Freq)), 2)) %>%
+  arrange(desc(`Motivo da devolução`)) %>%
+  mutate(posicao = cumsum(Prop) - 0.5*Prop) 
+
+ggplot(contagem) +
+  aes(x = factor(""), y = Prop , fill = factor(`Motivo da devolução`)) +
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar(theta = "y") +
+  geom_text(
+    aes(x = 2, y = posicao, label = paste0(Prop, "%")),
+    color = "black", size = 3.5
+  ) +
+  theme_void() +
+  facet_wrap(~Marca)+
+  theme(legend.position = "top") +
+  scale_fill_manual(values = cores_estat, name = 'DRV')
+ggsave("analise5.pdf", width = 158, height = 93, units = "mm")
+```
+
+```{r}
+
+freq_dev = banco_agrupado %>% 
+  filter(!is.na(Marca)) %>% 
+  filter(!is.na(`Motivo da devolução`)) %>% 
+  group_by(`Motivo da devolução`, Marca) %>%
+  summarise(freq = n()) 
+
+freq_dev = freq_dev %>% 
+  mutate(Proporção = prop.table(freq)) %>% 
+  mutate(Porcentagem =  sprintf("%.2f%%", Proporção * 100)) %>% 
+  mutate(Freq_c = as.character(freq)) %>% 
+  mutate(Porcentagem_c =  as.character(Porcentagem))
+
+label = str_c(freq_dev$Freq_c, " ( ", freq_dev$Porcentagem_c, " )")
+
+ggplot(freq_dev) +
+  aes(x = fct_reorder(Marca, freq, .desc = T), y = freq, 
+      fill = `Motivo da devolução`, label = label) +
+  geom_col(position = position_dodge2(preserve = "single", padding = 0)) +
+  geom_text( position = position_dodge(width = 0.9),
+    vjust = 0.3, hjust = - 0.3,
+    size = 2) +
+  coord_flip()+
+  labs(x = "Motivo da devolução", y = "Frequência") +
+  scale_y_continuous(limits = c(0, 50)) + 
+  theme_estat() +
+  theme(axis.text.x = element_text(size = 10))
+
+ggsave("analise5.pdf", width = 158, height = 93, units = "mm")
+```

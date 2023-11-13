@@ -12,12 +12,14 @@ library(dplyr)
 library(lubridate)
 library(ggplot2)
 library(plotly)
+library(readr)
 ```
 
 Carregando os Bancos de Dados
 ```{r}
-vendas = read.csv("vendas.csv")
-devolucao1 = read.csv("devolução.csv")
+vendas = read.csv("vendas.csv")n 
+#banco atualizado
+devolução = read.csv("devolução_atualizado.csv")
 ```
 
 Tema ESTAT
@@ -87,7 +89,7 @@ levels(vendas$Tamanho)
 vendas$Tamanho <- as.character(vendas$Tamanho)
 ```
 
-Tratando os Dados - Vendas
+Tratando os Dados - Devolução
 ```{r}
 str(devolucao1)
 devolucao = devolucao1 %>% 
@@ -112,12 +114,19 @@ sum(duplicated(dados))
 
 1 - Faturamento anual por categoria 
 ```{r}
+dados$Data_da_Venda = mdy(dados$Data_da_Venda)
+dados = dados %>% 
+  mutate(Mês = month(Data_da_Venda))
 linhas = dados %>% 
   filter(!is.na(Preço)) %>%
   filter(!is.na(Categoria)) %>%
   group_by(Mês, Categoria) %>% 
   summarise(Faturamento = sum(Preço)) %>% 
   filter(!is.na(Mês))
+
+linhas$Mês= as.factor(linhas$Mês)
+levels(linhas$Mês) = c("Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez")
+levels(linhas$Mês)
 
 ggplot(linhas) +
   aes(x = Mês, y = Faturamento, group = Categoria, colour = Categoria) +
@@ -130,23 +139,143 @@ ggsave("linhas_bivariado.pdf", width = 158, height = 93, units = "mm")
 ```
 
 
+2 - Variação do preço por marca 
 
-
-
-
-ESSE NÂO É DA ANALISE 1
 ```{r}
 dados1 = dados %>% 
-    filter(!is.na(Categoria))
+    filter(!is.na(Categoria)) %>% 
+    filter(!is.na(Marca)) %>% 
+    filter(!is.na(Nome_do_Produto))
   
 ggplot(dados1) +
-  aes(x = Categoria, y = Preço) +
+  aes(x = Marca, y = Preço) +
   geom_boxplot(fill = c("#A11D21"), width = 0.5) +
   stat_summary(
     fun = "mean", geom = "point", shape = 23, size = 3, fill = "white"
   ) +
-  labs(x = "Categorias", y = "Preço por peça (em Reais)") +
+  labs(x = "Marca", y = "Preço (em Reais)") +
   theme_estat()
-ggsave("boxplot.pdf", width = 158, height = 93, units = "mm")
+
+ggsave("boxplot_analise2.pdf", width = 158, height = 93, units = "mm")
+```
+
+Cálculo de medidas resumo para cada marca - 
+Adidas
+```{r}
+adidas = dados1 %>% 
+  filter(!is.na(dados1$Preço)) %>% 
+  filter(Marca == "Adidas")
+  
+sd(adidas$Preço)
+  #Marca num geral
+resumo_adidas_geral = summary(adidas$Preço)
+resumo_adidas_geral
+
+adidas %>% 
+  filter(Preço == 96) %>% 
+  count()
+```
+
+Gucci
+```{r}
+gucci = dados1 %>% 
+  filter(!is.na(dados1$Preço)) %>% 
+  filter(Marca == "Gucci")
+
+sd(gucci$Preço)
+  #Marca num geral
+resumo_gucci_geral = summary(gucci$Preço)
+resumo_gucci_geral
+```
+
+H&M
+```{r}
+hm = dados1 %>% 
+  filter(!is.na(dados1$Preço)) %>%  
+  filter(Marca == "H&M")
+  
+sd(hm$Preço)
+  #Marca num geral
+resumo_HM_geral = summary(hm$Preço)
+resumo_HM_geral
+
+hm %>% 
+  filter(Preço == 100) %>% 
+  count()
+```
+
+Nike
+```{r}
+nike = dados1 %>% 
+  filter(!is.na(dados1$Preço)) %>% 
+  filter(Marca == "Nike") 
+
+sd(nike$Preço)
+
+  #Marca num geral
+resumo_nike_geral = summary(nike$Preço)
+resumo_nike_geral
+```
+
+Zara
+```{r}
+zara = dados1 %>% 
+  filter(!is.na(dados1$Preço)) %>% 
+  filter(Marca == "Zara")  
+
+sd(zara$Preço)
+  #Marca num geral
+resumo_zara_geral = summary(zara$Preço)
+resumo_zara_geralS
+
+zara %>% 
+  filter(Preço == 10) %>% 
+  count()
+```
+
+3 - Relação entre categorias (apenas feminino e masculino) e  cor 
+
+```{r}
+freq_cor = dados %>% 
+  filter(!is.na(Cor)) %>% 
+  filter(!is.na(Categoria)) %>% 
+  filter(Categoria == "Moda Masculina" | Categoria == "Moda Feminina")%>%
+  group_by(Categoria, Cor) %>%
+  summarise(freq = n()) 
+
+freq_cor = freq_cor %>% 
+  mutate(Proporção = prop.table(freq)) %>% 
+  mutate(Porcentagem =  sprintf("%.2f%%", Proporção * 100)) %>% 
+  mutate(Freq_c = as.character(freq)) %>% 
+  mutate(Porcentagem_c =  as.character(Porcentagem))
+  
+label = str_c(freq_cor$Freq_c, " ( ", freq_cor$Porcentagem_c, " )")
+
+grafico_3_estat = ggplot(freq_cor) +
+  aes(x = fct_reorder(Categoria, freq, .desc=T), y = freq, label = label, fill = Cor) +
+  geom_col(position = position_dodge2(preserve = "single", padding = 0))+
+  geom_text(
+    position = position_dodge(width = .9),
+    vjust = -0.5, hjust = 0.5,
+    size = 1.5) + 
+  labs(x = "Categoria", y = "Frequência") +
+  theme_estat() +
+  scale_fill_manual(values = cores_estat)
+grafico_3_estat
+ggsave("colunas.pdf", width = 158, height = 93, units = "mm")
+```
+
+Valores para a tabela de contingência
+```{r}
+dados$Cor = as.factor(dados$Cor)
+levels(dados$Cor)
+
+cores = dados %>% 
+  filter(!is.na(Cor)) %>% 
+  filter(!is.na(Categoria)) %>% 
+  filter(Categoria == "Moda Masculina" | Categoria == "Moda Feminina")%>%
+  group_by(Categoria, Cor) %>% 
+  count()
+cores
 ```
 
