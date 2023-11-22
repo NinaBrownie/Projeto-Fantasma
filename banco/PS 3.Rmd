@@ -126,6 +126,9 @@ sum(duplicated(dados))
 Juntando os bancos
 ```{r}
 banco_agrupado = left_join(dados, devolucao, by = "ID_Único")
+banco_agrupado = banco_agrupado %>% 
+  select(!Motivo_da_devolução.x)
+colnames(banco_agrupado)[colnames(banco_agrupado) == "Motivo_da_devolução.y"] <- "Motivo da devolução"
 ```
 
 1 - Faturamento anual por categoria 
@@ -177,9 +180,10 @@ ggsave("boxplot_analise2.pdf", width = 158, height = 93, units = "mm")
 Cálculo de medidas resumo para cada marca - 
 Adidas
 ```{r}
-adidas = dados1 %>% 
-  filter(!is.na(dados1$Preço)) %>% 
-  filter(Marca == "Adidas")
+adidas = dados %>% 
+    filter(!is.na(Preço)) %>% 
+    filter(!is.na(Marca)) %>%
+    filter(Marca == "Adidas")
   
 sd(adidas$Preço)
   #Marca num geral
@@ -193,9 +197,10 @@ adidas %>%
 
 Gucci
 ```{r}
-gucci = dados1 %>% 
-  filter(!is.na(dados1$Preço)) %>% 
-  filter(Marca == "Gucci")
+gucci = dados %>% 
+    filter(!is.na(Preço)) %>% 
+    filter(!is.na(Marca)) %>%
+    filter(Marca == "Gucci")
 
 sd(gucci$Preço)
   #Marca num geral
@@ -205,9 +210,10 @@ resumo_gucci_geral
 
 H&M
 ```{r}
-hm = dados1 %>% 
-  filter(!is.na(dados1$Preço)) %>%  
-  filter(Marca == "H&M")
+hm = dados %>% 
+    filter(!is.na(Preço)) %>% 
+    filter(!is.na(Marca)) %>%  
+    filter(Marca == "H&M")
   
 sd(hm$Preço)
   #Marca num geral
@@ -221,9 +227,10 @@ hm %>%
 
 Nike
 ```{r}
-nike = dados1 %>% 
-  filter(!is.na(dados1$Preço)) %>% 
-  filter(Marca == "Nike") 
+nike = dados %>% 
+    filter(!is.na(Preço)) %>% 
+    filter(!is.na(Marca)) %>%
+    filter(Marca == "Nike") 
 
 sd(nike$Preço)
 
@@ -234,9 +241,10 @@ resumo_nike_geral
 
 Zara
 ```{r}
-zara = dados1 %>% 
-  filter(!is.na(dados1$Preço)) %>% 
-  filter(Marca == "Zara")  
+zara = dados %>% 
+    filter(!is.na(Preço)) %>% 
+    filter(!is.na(Marca)) %>%
+    filter(Marca == "Zara")  
 
 sd(zara$Preço)
   #Marca num geral
@@ -316,34 +324,16 @@ Cálculo de correlação
 ```{r}
 cor(dispersão$Preço, dispersão$Avaliação, method = "pearson")
 ```
-
-5 -  Frequência de cada tipo de devolução por marca;
+Medidas Resumo 
 ```{r}
-colnames(banco_agrupado)[colnames(banco_agrupado) == "Motivo_da_devolução.y"] <- "Motivo da devolução"
-contagem <- banco_agrupado %>% 
-  filter(!is.na(`Motivo da devolução`)) %>% 
-  filter(!is.na(Marca)) %>% 
-  group_by( Marca, `Motivo da devolução`) %>%
-  summarise(Freq = n()) %>%
-  mutate(Prop = round(100*(Freq/sum(Freq)), 2)) %>%
-  arrange(desc(`Motivo da devolução`)) %>%
-  mutate(posicao = cumsum(Prop) - 0.5*Prop) 
+summary(dispersão$Preço)
+sd(dispersão$Preço)
 
-ggplot(contagem) +
-  aes(x = factor(""), y = Prop , fill = factor(`Motivo da devolução`)) +
-  geom_bar(width = 1, stat = "identity") +
-  coord_polar(theta = "y") +
-  geom_text(
-    aes(x = 2, y = posicao, label = paste0(Prop, "%")),
-    color = "black", size = 3.5
-  ) +
-  theme_void() +
-  facet_wrap(~Marca)+
-  theme(legend.position = "top") +
-  scale_fill_manual(values = cores_estat, name = 'DRV')
-ggsave("analise5.pdf", width = 158, height = 93, units = "mm")
+summary(dispersão$Avaliação)
+sd(dispersão$Avaliação)
 ```
 
+5 -  Frequência de cada tipo de devolução por marca;
 ```{r}
 
 freq_dev = banco_agrupado %>% 
@@ -365,7 +355,7 @@ ggplot(freq_dev) +
       fill = `Motivo da devolução`, label = label) +
   geom_col(position = position_dodge2(preserve = "single", padding = 0)) +
   geom_text( position = position_dodge(width = 0.9),
-    vjust = 0.3, hjust = - 0.3,
+    vjust = 0.3, hjust = - 0.1,
     size = 2) +
   coord_flip()+
   labs(x = "Motivo da devolução", y = "Frequência") +
@@ -375,3 +365,34 @@ ggplot(freq_dev) +
 
 ggsave("analise5.pdf", width = 158, height = 93, units = "mm")
 ```
+6 - Avaliação Média por Marca;
+```{r}
+media_marca = banco_agrupado %>% 
+  filter(!is.na(Marca)) %>% 
+  filter(!is.na(Avaliação)) %>% 
+  group_by(Marca) %>%
+  summarise(media = mean(Avaliação)) 
+
+media_marca = media_marca %>% 
+  mutate(Proporção = prop.table(media)) %>% 
+  mutate(Porcentagem =  sprintf("%.2f%%", Proporção * 100)) %>% 
+  mutate(media_c = as.character(media)) %>% 
+  mutate(Porcentagem_c =  as.character(Porcentagem)) %>% 
+  mutate(Media = round(media, 3))
+
+label = str_c(media_marca$Media, " ( ", media_marca$Porcentagem_c, " )")
+
+ggplot(media_marca) +
+  aes(x = fct_reorder(Marca, media, .desc = T), y = media, 
+      fill = Marca, label = label) +
+  geom_col(position = position_dodge2(preserve = "single", padding = 0)) +
+  geom_text( position = position_dodge(width = 0.9),
+    vjust = - 0.5, hjust = 0.5,
+    size = 3) +
+  labs(x = "Marca", y = "Avaliação Média") +
+  scale_y_continuous(limits = c(0, 2.8)) + 
+  theme_estat()
+
+ggsave("analise6.pdf", width = 158, height = 93, units = "mm")
+```
+
